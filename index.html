@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz do Casal</title>
+    <!-- Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Biblioteca de Confetes -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            gold: '#fbbf24',
+                            pink: '#db2777',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #4c1d95, #9d174d, #db2777);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Animações de Transição */
+        .fade-in {
+            animation: fadeIn 0.4s ease-in forwards;
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-15px); }
+        }
+
+        /* Botões das alternativas */
+        .option-btn {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            background-color: rgba(255, 255, 255, 0.25);
+            border-color: #fbbf24;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+        }
+
+        .option-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        /* Estados das respostas */
+        .correct-answer {
+            background-color: #10b981 !important; /* Tailwind green-500 */
+            border-color: #059669 !important;
+            color: white !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6) !important;
+            animation: pulseCorrect 0.5s ease;
+        }
+
+        .wrong-answer {
+            background-color: #ef4444 !important; /* Tailwind red-500 */
+            border-color: #b91c1c !important;
+            color: white !important;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
+            animation: shakeWrong 0.5s ease;
+        }
+
+        @keyframes pulseCorrect {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shakeWrong {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        /* Estilo do Botão Principal */
+        .btn-game-show {
+            background: linear-gradient(to bottom, #fbbf24, #d97706);
+            border-bottom: 4px solid #b45309;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            transition: all 0.1s;
+        }
+        .btn-game-show:active {
+            transform: translateY(4px);
+            border-bottom-width: 0px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body class="text-white flex items-center justify-center p-4">
+
+    <!-- Container Principal -->
+    <div id="game-container" class="glass-card rounded-3xl p-6 md:p-10 w-full max-w-xl relative">
+        
+        <!-- ================= TELA INICIAL ================= -->
+        <div id="screen-start" class="text-center fade-in">
+            <div class="text-5xl mb-4">💖</div>
+            <h1 class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-brand-gold to-yellow-200 mb-6 drop-shadow-md">
+                Quiz do Casal
+            </h1>
+            <p class="text-xl md:text-2xl font-semibold mb-8">
+                O Quão Bem Você Me Conhece?
+            </p>
+            <p class="text-sm text-gray-200 mb-10 opacity-80">
+                As opções são embaralhadas! Preste atenção e responda com o coração! ❤️
+            </p>
+            <button onclick="startGame()" class="btn-game-show text-white font-bold text-xl py-4 px-10 rounded-full w-full uppercase tracking-wider">
+                Começar
+            </button>
+        </div>
+
+        <!-- ================= TELA DO QUIZ ================= -->
+        <div id="screen-quiz" class="hidden">
+            <!-- Barra de Progresso -->
+            <div class="mb-6">
+                <div class="flex justify-between text-sm font-semibold text-brand-gold mb-2">
+                    <span id="progress-text">Pergunta 1/15</span>
+                    <span id="score-live-text">Pontos: 0</span>
+                </div>
+                <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden">
+                    <div id="progress-bar" class="bg-brand-gold h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Container da Pergunta -->
+            <div id="question-container" class="fade-in">
+                <h2 id="question-text" class="text-xl md:text-2xl font-bold mb-6 text-center min-h-[4rem] flex items-center justify-center">
+                    <!-- A pergunta entra aqui via JS -->
+                </h2>
+
+                <!-- Opções -->
+                <div id="options-container" class="space-y-3">
+                    <!-- Os botões entram aqui via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TELA FINAL ================= -->
+        <div id="screen-end" class="hidden text-center">
+            <div id="result-icon" class="text-6xl mb-6">🏆</div>
+            <h2 class="text-3xl font-bold text-brand-gold mb-2">Fim de Jogo!</h2>
+            <div class="text-5xl font-extrabold mb-6">
+                <span id="score-text">0</span> / <span id="total-text">0</span>
+            </div>
+            <div class="bg-black/20 p-6 rounded-2xl mb-8 border border-white/10">
+                <p id="final-message" class="text-lg md:text-xl font-medium leading-relaxed">
+                    <!-- Mensagem final dinâmica entra aqui -->
+                </p>
+            </div>
+            <button onclick="restartGame()" class="btn-game-show text-white font-bold text-lg py-3 px-8 rounded-full uppercase tracking-wider w-full md:w-auto">
+                Jogar Novamente 🔄
+            </button>
+        </div>
+
+    </div>
+
+    <!-- ================= SCRIPT ================= -->
+    <script>
+        /* Array de Perguntas Atualizado */
+        const questions = [
+            {
+                question: "Qual desses não era meu apelido quando eu era criança?",
+                options: ["Raizinho", "Cabeça", "Tipi", "Campeaozinho"],
+                answer: "Raizinho"
+            },
+            {
+                question: "Qual era a minha skin aos 10 anos de idade?",
+                options: ["Rainan pagodeiro", "Rainan nerd", "Rainan atleta", "Rainan ciclista"],
+                answer: "Rainan pagodeiro"
+            },
+            {
+                question: "Qual a minha cor favorita?",
+                options: ["Azul", "Vermelho", "Verde", "Preto"],
+                answer: "Azul"
+            },
+            {
+                question: "Qual a minha banda ou cantor(a) favorito?",
+                options: ["Baiana System", "Imagine Dragons", "Afrocidade", "Chicle com Banana", "BadBunny"],
+                answer: "Baiana System"
+            },
+            {
+                question: "Qual a minha série favorita?",
+                options: ["The Big Bang Theory", "The Office", "B99", "Stranger Things"],
+                answer: "The Big Bang Theory"
+            },
+            {
+                question: "Qual o ano favorito da minha vida?",
+                options: ["2024", "2010", "2014", "2018"],
+                answer: "2024"
+            },
+            {
+                question: "Qual país eu mais gostaria de conhecer?",
+                options: ["Itália", "Canadá", "Noruega", "Suíça"],
+                answer: "Itália"
+            },
+            {
+                question: "Com quantos anos foi o meu primeiro beijo?",
+                options: ["11 anos", "10 anos", "12 anos", "13 anos"],
+                answer: "11 anos"
+            },
+            {
+                question: "Qual a minha comida favorita?",
+                options: ["Moqueca de camarão", "Feijoada", "Acarajé", "Pizza", "Lasanha"],
+                answer: "Moqueca de camarão"
+            },
+            {
+                question: "Qual é o meu filme favorito?",
+                options: ["Homem Aranha Longe de Casa", "Guerra Infinita", "Vingadores Ultimato", "De Volta ao Lar"],
+                answer: "Homem Aranha Longe de Casa"
+            },
+            {
+                question: "Qual é o meu vilão favorito?",
+                options: ["Ultron", "Dr Doom", "Thanos", "Loki (do velho testamento)", "Duende Verde"],
+                answer: "Ultron"
+            },
+            {
+                question: "Qual é o meu hobby favorito?",
+                options: ["Jogar videogame", "Assistir série", "Jogar futebol", "Ler livros"],
+                answer: "Jogar videogame"
+            },
+            {
+                question: "Qual é o meu \"guilty pleasure\"?",
+                options: ["cheirar suvaco do dengo", "assistir video de unha sendo desencravada", "assistir filme besteirol", "rever episodios trocentas vezes"],
+                answer: "cheirar suvaco do dengo"
+            },
+            {
+                question: "Qual é o meu maior sonho?",
+                options: ["não precisar mais trabalhar e viver de renda passiva", "ver o Bahia ganhar a Liberta", "conhecer a Europa", "acabar com o Bolsonarismo"],
+                answer: "não precisar mais trabalhar e viver de renda passiva"
+            },
+            {
+                question: "Qual é o meu tipo de jogo favorito?",
+                options: ["Sobrevivencia", "Esporte", "RPG", "Ação / Aventura"],
+                answer: "Sobrevivencia"
+            }
+        ];
+
+        /* Variáveis de Estado */
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isAnswering = false;
+
+        /* Referências do DOM */
+        const screenStart = document.getElementById('screen-start');
+        const screenQuiz = document.getElementById('screen-quiz');
+        const screenEnd = document.getElementById('screen-end');
+        
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const scoreLiveText = document.getElementById('score-live-text');
+        const questionContainer = document.getElementById('question-container');
+
+        /* Função para embaralhar um array (Fisher-Yates) */
+        function shuffleArray(array) {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        }
+
+        /* Transição de Telas */
+        function switchScreen(hideElement, showElement) {
+            hideElement.classList.add('hidden');
+            showElement.classList.remove('hidden');
+            showElement.classList.add('fade-in');
+        }
+
+        function startGame() {
+            currentQuestionIndex = 0;
+            score = 0;
+            scoreLiveText.innerText = `Pontos: 0`;
+            switchScreen(screenStart, screenQuiz);
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            isAnswering = false;
+            const currentQ = questions[currentQuestionIndex];
+            
+            // Animação e Textos
+            questionContainer.classList.remove('fade-out');
+            questionContainer.classList.add('fade-in');
+
+            const progressPercentage = (currentQuestionIndex / questions.length) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+            progressText.innerText = `Pergunta ${currentQuestionIndex + 1} de ${questions.length}`;
+
+            questionText.innerText = currentQ.question;
+            optionsContainer.innerHTML = '';
+
+            // Embaralha as opções desta pergunta
+            const shuffledOptions = shuffleArray(currentQ.options);
+            const letters = ['A', 'B', 'C', 'D', 'E']; // Suporta até 5 opções
+
+            // Cria os botões com base no array embaralhado
+            shuffledOptions.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full bg-white/10 border-2 border-white/30 text-white font-semibold py-3 px-5 md:py-4 md:px-6 rounded-2xl text-left text-sm md:text-base flex items-center justify-between group';
+                
+                // Salvamos o texto real da opção para verificar na hora do clique
+                btn.dataset.text = option; 
+                
+                btn.innerHTML = `
+                    <span class="flex-1 pr-4">${option}</span>
+                    <span class="bg-white/20 w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold group-hover:bg-brand-gold group-hover:text-purple-900 transition-colors">
+                        ${letters[index]}
+                    </span>
+                `;
+                
+                btn.onclick = () => selectOption(option, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectOption(selectedText, btnElement) {
+            if (isAnswering) return;
+            isAnswering = true;
+
+            const currentQ = questions[currentQuestionIndex];
+            const isCorrect = selectedText === currentQ.answer;
+
+            // Identificar e desabilitar todos os botões
+            const allButtons = optionsContainer.querySelectorAll('button');
+            
+            allButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+                
+                // Se esse botão for a resposta certa (mesmo que o usuário não tenha clicado nele), revela!
+                if (btn.dataset.text === currentQ.answer) {
+                    btn.classList.remove('bg-white/10', 'border-white/30', 'opacity-70');
+                    btn.classList.add('correct-answer');
+                }
+            });
+
+            if (isCorrect) {
+                score++;
+                scoreLiveText.innerText = `Pontos: ${score}`;
+                triggerConfetti(false); // Mini confete
+            } else {
+                // Marca o botão que o usuário clicou de vermelho se for errado
+                btnElement.classList.remove('bg-white/10', 'border-white/30', 'opacity-70');
+                btnElement.classList.add('wrong-answer');
+            }
+
+            // Aguarda e avança
+            setTimeout(() => {
+                questionContainer.classList.remove('fade-in');
+                questionContainer.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex < questions.length) {
+                        loadQuestion();
+                    } else {
+                        endGame();
+                    }
+                }, 300);
+            }, 1800); // 1.8s para a pessoa ver qual era a resposta certa
+        }
+
+        function endGame() {
+            switchScreen(screenQuiz, screenEnd);
+            progressBar.style.width = '100%';
+            
+            document.getElementById('score-text').innerText = score;
+            document.getElementById('total-text').innerText = questions.length;
+
+            const finalMessage = document.getElementById('final-message');
+            const resultIcon = document.getElementById('result-icon');
+            const percentage = score / questions.length;
+            
+            let msg = "";
+
+            if (percentage === 1) {
+                resultIcon.innerText = "💍";
+                msg = "Gabaritou! Você me conhece perfeitamente. Feliz aniversário de namoro! Te amo demais! 💖🏆";
+                triggerConfetti(true);
+            } else if (percentage >= 0.7) {
+                resultIcon.innerText = "🥰";
+                msg = "Mandou muito bem! Quase perfeito. Cada dia ao seu lado é maravilhoso. Feliz nosso dia! ✨";
+                triggerConfetti(false);
+            } else if (percentage >= 0.4) {
+                resultIcon.innerText = "😅";
+                msg = "Foi bem, mas precisamos fofocar mais, hein? Brincadeiras à parte, te amo infinitamente! ❤️";
+            } else {
+                resultIcon.innerText = "🤡";
+                msg = "Parece que alguém vai ter que pagar o jantar hoje! 😂 O que importa é o nosso amor. Te amo! 💕";
+            }
+
+            finalMessage.innerHTML = msg;
+        }
+
+        function restartGame() {
+            screenEnd.classList.remove('fade-in');
+            screenEnd.classList.add('fade-out');
+            
+            setTimeout(() => {
+                screenEnd.classList.remove('fade-out');
+                switchScreen(screenEnd, screenStart);
+            }, 300);
+        }
+
+        /* Efeitos de Confete (canvas-confetti) */
+        function triggerConfetti(isGrand) {
+            if (isGrand) {
+                var duration = 3 * 1000;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+                var interval = setInterval(function() {
+                    var timeLeft = animationEnd - Date.now();
+                    if (timeLeft <= 0) return clearInterval(interval);
+                    var particleCount = 50 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            } else {
+                confetti({
+                    particleCount: 80,
+                    spread: 60,
+                    origin: { y: 0.6 },
+                    colors: ['#fbbf24', '#db2777', '#4c1d95', '#ffffff']
+                });
+            }
+        }
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+    </script>
+</body>
+</html>
